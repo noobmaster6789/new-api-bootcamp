@@ -1,26 +1,30 @@
-# Use the official .NET SDK as the build environment
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build-env
+# Use the .NET SDK image for building
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build-env
 
-# Set the working directory
+# Set the working directory inside the container to /app
 WORKDIR /app
 
-# Copy the project file and restore dependencies
-COPY demo/demo.csproj ./
-RUN dotnet restore
+# Copy the demo.csproj into the container's /app directory
+COPY demo.csproj ./demo.csproj
 
-# Copy the rest of the application files
-COPY demo/ ./ 
+# Restore the dependencies (nuget)
+RUN dotnet restore demo.csproj
 
-# Build the application
-RUN dotnet publish -c Release -o out
+# Copy all files from the demo directory (including the source code)
+COPY . .
 
-# Use a runtime image for the final build
-FROM mcr.microsoft.com/dotnet/aspnet:6.0
+# Build and publish the app
+RUN dotnet publish demo.csproj -c Release -o /app/out
+
+# Use a smaller runtime image to run the application
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
+
+# Copy the build output from the previous image
 COPY --from=build-env /app/out .
 
-# Expose the port
+# Expose the necessary port (default is 80)
 EXPOSE 80
 
-# Start the application
+# Set the entry point to start the application
 ENTRYPOINT ["dotnet", "demo.dll"]
