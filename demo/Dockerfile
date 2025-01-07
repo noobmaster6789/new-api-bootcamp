@@ -1,18 +1,26 @@
-# Use the official .NET runtime as the base image
-FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+# Use the official .NET SDK as the build environment
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build-env
+
+# Set the working directory
 WORKDIR /app
+
+# Copy the project file and restore dependencies
+COPY demo/demo.csproj ./
+RUN dotnet restore
+
+# Copy the rest of the application files
+COPY demo/ ./ 
+
+# Build the application
+RUN dotnet publish -c Release -o out
+
+# Use a runtime image for the final build
+FROM mcr.microsoft.com/dotnet/aspnet:6.0
+WORKDIR /app
+COPY --from=build-env /app/out .
+
+# Expose the port
 EXPOSE 80
 
-# Use the SDK image to build the app
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
-WORKDIR /src
-COPY ["new-api-bootcamp.csproj", "./"]
-RUN dotnet restore "new-api-bootcamp.csproj"
-COPY . .
-RUN dotnet publish -c Release -o /app/publish
-
-# Copy the build output to the final container
-FROM base AS final
-WORKDIR /app
-COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "new-api-bootcamp.dll"]
+# Start the application
+ENTRYPOINT ["dotnet", "demo.dll"]
